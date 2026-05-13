@@ -11,14 +11,12 @@ from collections import deque
 from tqdm import tqdm
 import time
 
-from core.game import VastSpaceLander
+from src.game import VastSpaceLander
 from gymnasium.envs.box2d.lunar_lander import FPS
-from core.agent import DQNAgent
+from src.agent import DQNAgent
 
-def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, save_path='models/checkpoint.pth', log_path='results/training_log.csv', reset=False, max_time=None):
-    """
-    Cloud-Optimized Deep Q-Learning with CSV logging, resume support, and headless mode.
-    """
+def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, save_path='models/checkpoint.pth', log_path='models/training_log.csv', reset=False, max_time=None):
+    """Cloud-Optimized Deep Q-Learning with CSV logging, resume support, and headless mode."""
     env = VastSpaceLander()
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.n
@@ -27,12 +25,6 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
     print(f"Using device: {device}")
     
     agent = DQNAgent(state_size=state_size, action_size=action_size, seed=0, device=device)
-    
-    # --- Resume Support: Checkpoint Resumption Logic ---
-    # This section handles three scenarios:
-    # 1. reset=True → delete checkpoint and log, train from scratch
-    # 2. reset=False + checkpoint exists → load checkpoint and resume from last episode
-    # 3. reset=False + no checkpoint → train from scratch (first run)
     
     start_episode = 1
     rewards = []
@@ -152,7 +144,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Lunar Lander RL Agent")
     parser.add_argument("--episodes", type=int, default=4000, help="Total number of episodes")
     parser.add_argument("--save_path", type=str, default='models/checkpoint.pth', help="Path to save model")
-    parser.add_argument("--log_path", type=str, default='results/training_log.csv', help="Path to save logs")
+    parser.add_argument("--log_path", type=str, default='models/training_log.csv', help="Path to save logs")
     parser.add_argument("--reset", action="store_true", help="Start training from scratch")
     parser.add_argument("--max_time", type=int, default=None, help="Stop training after this many seconds")
     args = parser.parse_args()

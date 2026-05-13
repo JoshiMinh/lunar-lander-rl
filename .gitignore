@@ -36,7 +36,8 @@ Wheels/
 
 # Project-specific
 !models/checkpoint.pth
-!results/training_log.csv
-results/*.png
-results/*.jpg
-results/*.mp4
+!models/training_log.csv
+models/*.png
+models/*.jpg
+models/*.mp4
+models/*.npy

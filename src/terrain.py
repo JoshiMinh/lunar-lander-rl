@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from core.constants import WORLD_W, WORLD_H, MOON_RADIUS
+from src.constants import WORLD_W, WORLD_H, MOON_RADIUS
 
 def generate_cosmos(viewport_w, viewport_h):
     """Generate distant realistic stars into a list of dictionaries."""

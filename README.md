@@ -1,51 +1,57 @@
 # 🚀 LunarLanderRL: Deep Reinforcement Learning for Precision Descent
 
-> **Last Updated:** May 1, 2026
+> **Last Updated:** May 13, 2026
 >
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Gymnasium](https://img.shields.io/badge/Gymnasium-20B2AA?logo=openai&logoColor=white)](https://gymnasium.farama.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An advanced deep reinforcement learning project featuring a custom **VastSpaceLander** environment and a sophisticated **Dueling Double DQN** agent. This project simulates high-gravity atmospheric descent with strict fuel management and precision landing requirements.
+This repository contains a custom **VastSpaceLander** reinforcement-learning environment, a **Dueling Double DQN** agent, and an archived LunarLander-v3 report that has now been merged into this README so the notebook can be removed safely.
 
 ---
 
 ## 🌌 The VastSpaceLander Environment
 
-Unlike the standard Gymnasium LunarLander, this environment is built for scale and realism.
+The main codebase simulates a larger, harsher landing scenario than the stock Gymnasium LunarLander.
 
-### 📐 State Vector (9-Dimensional)
-The agent perceives a normalized state vector representing its relationship to the landing pad:
-1.  **Horizontal Position**: $x$ coordinate relative to the pad.
-2.  **Vertical Position**: $y$ coordinate relative to the pad.
-3.  **Horizontal Velocity**: Scaled $v_x$.
-4.  **Vertical Velocity**: Scaled $v_y$.
-5.  **Angle**: Orientation of the lander in radians.
-6.  **Angular Velocity**: Speed of rotation.
-7.  **Leg 1 Contact**: Binary (0/1) indicator for left leg touchdown.
-8.  **Leg 2 Contact**: Binary (0/1) indicator for right leg touchdown.
-9.  **Fuel Level**: Remaining fuel percentage (300 units total).
+### State Space
+The agent observes a 9-dimensional normalized vector:
+1. Horizontal position relative to the landing pad.
+2. Vertical position relative to the landing pad.
+3. Horizontal velocity.
+4. Vertical velocity.
+5. Lander angle.
+6. Angular velocity.
+7. Left leg contact flag.
+8. Right leg contact flag.
+9. Remaining fuel level.
 
-### ⚙️ Physics & Challenges
--   **High Gravity**: Simulation runs at $-20.0$ gravity (double the standard) for faster, more challenging descents.
--   **Fuel Management**: Engines consume fuel rapidly; running out results in a ballistic descent.
--   **Starship Lander**: A custom "Starship" style polygon with unique aerodynamic properties.
--   **Vast Landscape**: A procedurally generated, rugged lunar surface that requires precision to find the pad.
--   **Safe Descent Window**: A generous 5,000-step (100-second) limit to allow for cautious, realistic landings.
--   **Visual Guidance**: High-visibility green landing pad with **White Pulsing Beacons** that scale with the camera.
+### Environment Characteristics
+- High gravity for faster, more difficult descents.
+- Fuel-limited thrusters that can force a ballistic fall.
+- Procedurally generated terrain with a narrow landing zone.
+- Long episode horizon for careful landing control.
+- Visual landing guidance tuned for the custom renderer.
+
+### Reward Structure
+- Successful landing bonus.
+- Fuel-saving bonus.
+- Speed bonus for landing sooner.
+- Descent shaping reward when centered over the pad.
+- Small living cost to avoid hovering.
+- Crash penalty for failed landings.
 
 ---
 
 ## 🧠 Model Architecture
 
-The agent utilizes a **Dueling Double Deep Q-Network (D3QN)** to decouple state valuation from action advantage, significantly improving stability in complex environments.
+The agent uses a **Dueling Double Deep Q-Network (D3QN)** design:
 
-### Architectural Features:
--   **Dueling Streams**: Splits the network into a **Value** stream (how good is the state?) and an **Advantage** stream (how much better is this action?).
--   **Double DQN**: Prevents the common "overestimation bias" by using the local network for action selection and the target network for evaluation.
--   **Experience Replay**: A buffer of $10^5$ steps to break temporal correlations.
--   **Soft Updates**: Smoothly tracks target weights using $\tau = 0.001$.
+- Dueling streams separate state value $V(s)$ from action advantage $A(s,a)$.
+- Double DQN selects actions with the local network and evaluates them with the target network.
+- Experience replay stores transitions in a $10^5$-entry buffer.
+- Soft target updates track the online network with $\tau = 0.001$.
 
 ```mermaid
 graph LR
@@ -53,56 +59,147 @@ graph LR
     H1 --> H2[Dense 128 + ReLU]
     H2 --> V[Value Stream V(s)]
     H2 --> A[Advantage Stream A(s,a)]
-    V --> Q[Output: Q(s,a) = V + (A - mean(A))]
+    V --> Q[Q(s,a) = V + (A - mean(A))]
     A --> Q
 ```
 
-### 🏆 Optimized Reward Function
-The agent is trained on a highly competitive reward structure designed for precision:
-- **Base Landing**: +200 points.
-- **Fuel Bonus**: +0.8 points for every Liter of fuel saved (up to **+240**).
-- **Speed Bonus**: +0.05 points for every step saved under the 5,000 limit (up to **+250**).
-- **Descent Reinforcement**: Proportional bonus for downward velocity when centered over the pad.
-- **Hovering Penalty**: -0.05 living cost per step to ensure a fast approach.
-- **Crash/Failure**: -120 points.
+### Reward Shaping Highlights
+- Base landing reward.
+- Fuel conservation bonus.
+- Faster-landing bonus.
+- Vertical descent shaping over the pad.
+- Small per-step penalty to discourage hovering.
+- Failure penalty for crashes.
 
 ---
 
 ## 🛠️ Getting Started
 
-### 📦 Installation
+### Installation
 ```bash
-# Install dependencies
 pip install gymnasium[box2d] torch matplotlib tqdm pandas pygame
 ```
 
-### 🏋️ Training the Agent
-The training script is optimized for headless server environments but works locally. It supports **automatic resuming**: if `models/checkpoint.pth` is found, the agent loads its weights and continues.
+### Training
+The training script supports resume-from-checkpoint behavior and now stores logs in `models/`.
 
 ```bash
-# Train for the recommended 3000 episodes
 python train.py --episodes 3000
-
-# Start from scratch (recommended after reward changes)
 python train.py --reset
 ```
 
-### 🎮 Watching the Demo
-Watch the trained agent perform a 10-episode demonstration:
+### Demo
+The demo now features an **interactive model selection menu** that lets you:
+1. Choose any trained model from the `models/` directory
+2. Select DQN variant configuration (Double DQN, Dueling DQN, or both)
+3. Choose the number of episodes to run (5, 10, 20, or 100)
+
+Simply run:
 ```bash
 python main.py
 ```
+
+The menu will display all available models with their average training scores (if available), then guide you through the configuration options. Example output:
+
+```
+======================================================================
+🚀 LUNAR LANDER DEMO - Model Selection
+======================================================================
+
+📦 Available Models:
+
+  1. checkpoint.pth                 (scores not available)
+  2. d3qn_model.pth                 (avg score: 184.80)
+  3. double_dqn_model.pth           (avg score: 177.69)
+  4. dueling_dqn_model.pth          (avg score: 173.47)
+  5. vanilla_dqn_model.pth          (avg score: 187.14)
+
+Select model (1-5): 
+```
+
+### Artifact Layout
+All saved artifacts now live in `models/`:
+- `models/checkpoint.pth`
+- `models/training_log.csv`
+- `models/*_model.pth`
+- `models/*_scores.npy`
+
+---
+
+## 📘 Archived Notebook Report
+
+The old `DQN_LunarLander_v3.ipynb` content is preserved here as a report-style summary.
+
+### 1. Problem Setup
+The notebook studied the standard **LunarLander-v3** environment as a reinforcement-learning control problem.
+
+- State space: 8 continuous dimensions.
+- Action space: 4 discrete thrust actions.
+- Success criterion: average reward of at least 200 over 100 episodes.
+
+### 2. Theory
+The report covered the core RL and DQN equations:
+
+$$Q^{\pi}(s, a) = \mathbb{E}_{\pi}\left[\sum_{k=0}^{\infty} \gamma^k r_{t+k+1} \mid s_t = s, a_t = a\right]$$
+
+$$Q^*(s, a) = \mathbb{E}\left[r + \gamma \max_{a'} Q^*(s', a') \mid s, a\right]$$
+
+$$\mathcal{L}(\theta) = \mathbb{E}\left[(y - Q(s, a; \theta))^2\right]$$
+
+It also explained:
+- Experience replay.
+- Target networks.
+- Double DQN.
+- Dueling DQN.
+- D3QN as the combination of Double + Dueling.
+
+### 3. Implementation Notes
+The notebook implemented the usual DQN training stack:
+- A 2-layer Q-network with ReLU activations.
+- A replay buffer for transition sampling.
+- A DQN agent with epsilon-greedy exploration.
+- Soft target updates.
+- Gradient clipping for stability.
+
+### 4. Training Configuration
+The notebook used these representative hyperparameters:
+- Buffer size: $10^5$
+- Batch size: 64
+- Discount factor: 0.99
+- Soft update factor: $10^{-3}$
+- Learning rate: $5 \times 10^{-4}$
+- Episodes: 2000
+- Max steps per episode: 1000
+- Epsilon schedule: start 1.0, end 0.01, decay 0.995
+
+### 5. Experiments
+Four variants were compared under the same seed and hyperparameters:
+- Vanilla DQN.
+- Double DQN.
+- Dueling DQN.
+- D3QN.
+
+The notebook recorded learning curves, summary tables, and per-variant score files.
+
+### 6. Evaluation
+The report evaluated the best model with greedy inference and visualized:
+- Reward distribution.
+- Success rate.
+- A live demo rollout.
+
+### 7. Conclusion
+The notebook concluded that Double DQN and Dueling DQN both improve over Vanilla DQN, while D3QN is typically the strongest and most stable of the four.
 
 ---
 
 ## 🤖 CI/CD Automated Training
 
-This repository features a **GitHub Actions** workflow that automates the training process. 
+The GitHub Actions workflow trains the agent on pushes to `main` and can resume from `models/checkpoint.pth` plus `models/training_log.csv`.
 
--   **Auto-Resume**: On every push to `main`, the runner pulls the latest weights, trains for additional episodes, and pushes the updated model back to the repo.
--   **Manual Reset**: You can manually trigger the "Automated Training & Sync" workflow from the Actions tab with a `reset` flag to start training from scratch on GitHub's servers.
+- Auto-resume keeps long training runs moving across commits.
+- Manual reset is available from the Actions tab when training should restart from scratch.
 
 ---
 
 ## 📝 License
-This project is licensed under the MIT License. Developed for Reinforcement Learning research and demonstration.
+This project is licensed under the MIT License. It is intended for reinforcement-learning research and demonstration.

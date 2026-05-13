@@ -5,7 +5,6 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'models/**'
-      - 'results/**'
       - 'README.md'
       - 'walkthrough.md'
       - 'implementation_plan.md'
@@ -50,8 +49,8 @@ jobs:
       run: |
         if [ -f "models/checkpoint.pth" ]; then
           echo "📦 Checkpoint Status: FOUND"
-          if [ -f "results/training_log.csv" ]; then
-            LAST_EPISODE=$(tail -n 1 results/training_log.csv | cut -d',' -f1)
+          if [ -f "models/training_log.csv" ]; then
+            LAST_EPISODE=$(tail -n 1 models/training_log.csv | cut -d',' -f1)
             echo "   Last Episode: $LAST_EPISODE (resuming training)"
           else
             echo "   Warning: No training log found"
@@ -68,6 +67,6 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "model: auto-update trained weights [skip ci]"
-        file_pattern: 'models/checkpoint.pth results/training_log.csv'
+        file_pattern: 'models/checkpoint.pth models/training_log.csv'
         skip_dirty_check: false    
         skip_fetch: true          

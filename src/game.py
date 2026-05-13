@@ -4,9 +4,9 @@ import Box2D
 from Box2D.b2 import fixtureDef, polygonShape, revoluteJointDef
 from gymnasium.envs.box2d.lunar_lander import LunarLander, INITIAL_RANDOM, SCALE, FPS
 
-from core.constants import WORLD_W, WORLD_H, MODERN_LANDER_POLY
-from core.terrain import generate_cosmos, build_lunar_surface
-from core.renderer import Renderer
+from src.constants import WORLD_W, WORLD_H, MODERN_LANDER_POLY
+from src.terrain import generate_cosmos, build_lunar_surface
+from src.renderer import Renderer
 
 class VastSpaceLander(LunarLander):
     """
@@ -25,7 +25,7 @@ class VastSpaceLander(LunarLander):
         self.success_timer_steps = 0
         self.beacon_state = 0 # For flashing effect in renderer
         
-        import core.constants as const
+        import src.constants as const
         self.stars = generate_cosmos(const.CUSTOM_VIEWPORT_W, const.CUSTOM_VIEWPORT_H)
         self.my_renderer = Renderer(self.render_mode)
 
