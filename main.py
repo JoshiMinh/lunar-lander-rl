@@ -1,5 +1,7 @@
-from src.runner import run_demo, run_train_interactive
-from src.utils import build_interactive_menu
+import os
+import sys
+
+from src.train.cli import build_interactive_menu, run_demo, run_train_interactive
 
 
 if __name__ == "__main__":

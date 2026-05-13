@@ -1,14 +1,5 @@
-from .runner import run_demo, run_train_interactive
-from .train import train
-from .agent import DQNAgent
-from .utils import scan_models_directory, build_interactive_menu, load_state_dict_flexible
+"""Top-level package for Lunar Lander RL."""
 
-__all__ = [
-	"run_demo",
-	"run_train_interactive",
-	"train",
-	"DQNAgent",
-	"scan_models_directory",
-	"build_interactive_menu",
-	"load_state_dict_flexible",
-]
+from .train.cli import build_interactive_menu, run_demo, run_train_interactive
+
+__all__ = ["build_interactive_menu", "run_demo", "run_train_interactive"]

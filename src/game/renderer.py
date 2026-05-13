@@ -1,7 +1,7 @@
 import pygame
 import numpy as np
 from gymnasium.envs.box2d.lunar_lander import FPS, SCALE
-from src.constants import (
+from src.game.constants import (
     CUSTOM_VIEWPORT_W, CUSTOM_VIEWPORT_H,
     DESCENT_STAGE_POLY, ASCENT_STAGE_POLY, COCKPIT_WINDOW_POLY
 )

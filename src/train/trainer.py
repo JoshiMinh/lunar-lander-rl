@@ -3,7 +3,6 @@ if "SDL_VIDEODRIVER" not in os.environ:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 import gymnasium as gym
-import random
 import torch
 import numpy as np
 import pandas as pd
@@ -11,11 +10,32 @@ from collections import deque
 from tqdm import tqdm
 import time
 
-from src.game import VastSpaceLander
-from gymnasium.envs.box2d.lunar_lander import FPS
-from src.agent import DQNAgent
+from src.game.environment import VastSpaceLander
+from src.train.agent import DQNAgent
 
-def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, save_path='models/checkpoint.pth', log_path='models/training_log.csv', reset=False, max_time=None):
+VARIANT_CONFIGS = {
+    'd3qn': {
+        'double_dqn': True,
+        'dueling': True,
+        'save_path': 'models/d3qn_model.pth',
+        'log_path': 'models/d3qn_training_log.csv',
+    },
+    'double_dqn': {
+        'double_dqn': True,
+        'dueling': False,
+        'save_path': 'models/double_dqn_model.pth',
+        'log_path': 'models/double_dqn_training_log.csv',
+    },
+    'dueling_dqn': {
+        'double_dqn': False,
+        'dueling': True,
+        'save_path': 'models/dueling_dqn_model.pth',
+        'log_path': 'models/dueling_dqn_training_log.csv',
+    },
+}
+
+
+def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, save_path='models/d3qn_model.pth', log_path='models/training_log.csv', reset=False, max_time=None, double_dqn=True, dueling=True):
     """Cloud-Optimized Deep Q-Learning with CSV logging, resume support, and headless mode."""
     env = VastSpaceLander()
     state_size = env.observation_space.shape[0]
@@ -24,7 +44,7 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    agent = DQNAgent(state_size=state_size, action_size=action_size, seed=0, device=device)
+    agent = DQNAgent(state_size=state_size, action_size=action_size, seed=0, device=device, double_dqn=double_dqn, dueling=dueling)
     
     start_episode = 1
     rewards = []
@@ -36,35 +56,33 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
         print("🔄 Reset flag detected. Starting training from scratch...")
         if os.path.exists(save_path):
             os.remove(save_path)
-            print(f"   ✓ Deleted old checkpoint: {save_path}")
+            print(f"   ✓ Deleted old model file: {save_path}")
         if os.path.exists(log_path):
             os.remove(log_path)
             print(f"   ✓ Deleted old logs: {log_path}")
     elif os.path.exists(save_path):
-        print(f"📦 Checkpoint found at {save_path}. Attempting to resume...")
+        print(f"📦 Model found at {save_path}. Attempting to resume...")
         try:
             agent.qnetwork_local.load_state_dict(torch.load(save_path, map_location=device))
             agent.qnetwork_target.load_state_dict(torch.load(save_path, map_location=device))
             
-            # Try to recover epsilon and episode count from training log
             if os.path.exists(log_path):
                 log_df = pd.read_csv(log_path)
                 if not log_df.empty:
                     last_episode = int(log_df.iloc[-1]['episode'])
                     start_episode = last_episode + 1
-                    n_episodes = last_episode + n_episodes  # Add next batch of episodes
+                    n_episodes = last_episode + n_episodes
                     eps = float(log_df.iloc[-1]['epsilon'])
                     history = log_df.to_dict('records')
-                    reward_col = 'reward' if 'reward' in log_df.columns else 'score'
                     print(f"   ✓ Resumed from Episode {start_episode}. Target: {n_episodes} (Epsilon: {eps:.4f})")
                 else:
-                    print(f"   ⚠ Checkpoint loaded, but log file empty. Starting from Episode 1 with existing weights.")
+                    print(f"   ⚠ Model loaded, but log file empty. Starting from Episode 1 with existing weights.")
             else:
-                print(f"   ⚠ Checkpoint loaded, but no log file. Starting from Episode 1 with existing weights.")
+                print(f"   ⚠ Model loaded, but no log file. Starting from Episode 1 with existing weights.")
         except Exception as e:
-            print(f"   ✗ Failed to load checkpoint: {e}. Starting from scratch.")
+            print(f"   ✗ Failed to load model: {e}. Starting from scratch.")
     else:
-        print("🆕 No checkpoint found. Starting fresh training from Episode 1.")
+        print("🆕 No model file found. Starting fresh training from Episode 1.")
 
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -95,7 +113,6 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
             rewards.append(score)
             eps = max(eps_end, eps_decay * eps)
             
-            # Log to list
             history.append({
                 'episode': i_episode,
                 'reward': score,
@@ -119,7 +136,6 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
                 pd.DataFrame(history).to_csv(log_path, index=False)
                 break
             
-            # Check for timeout
             if max_time and (time.time() - total_start_time > max_time):
                 print(f"\nReached maximum training time ({max_time}s). Saving progress and exiting...")
                 timed_out = True
@@ -133,27 +149,50 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
             pd.DataFrame(history).to_csv(log_path, index=False)
             if interrupted or timed_out:
                 last_ep = history[-1]['episode']
-                print(f"Saved checkpoint and logs up to episode {last_ep}.")
+                print(f"Saved model and logs up to episode {last_ep}.")
         elif interrupted:
             print("No completed episodes yet; nothing to save.")
             
     return history
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Train Lunar Lander RL Agent")
-    parser.add_argument("--episodes", type=int, default=4000, help="Total number of episodes")
-    parser.add_argument("--save_path", type=str, default='models/checkpoint.pth', help="Path to save model")
-    parser.add_argument("--log_path", type=str, default='models/training_log.csv', help="Path to save logs")
-    parser.add_argument("--reset", action="store_true", help="Start training from scratch")
-    parser.add_argument("--max_time", type=int, default=None, help="Stop training after this many seconds")
-    args = parser.parse_args()
 
-    history = train(
-        n_episodes=args.episodes, 
-        save_path=args.save_path, 
-        log_path=args.log_path, 
-        reset=args.reset, 
-        max_time=args.max_time
+def train_variant(variant_name, n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, reset=False, max_time=None):
+    """Train one named model variant and save it into models/."""
+    if variant_name not in VARIANT_CONFIGS:
+        raise ValueError(f"Unknown variant: {variant_name}")
+
+    cfg = VARIANT_CONFIGS[variant_name]
+    print(f"\n=== Training {variant_name.upper()} ===")
+    return train(
+        n_episodes=n_episodes,
+        max_t=max_t,
+        eps_start=eps_start,
+        eps_end=eps_end,
+        eps_decay=eps_decay,
+        save_path=cfg['save_path'],
+        log_path=cfg['log_path'],
+        reset=reset,
+        max_time=max_time,
+        double_dqn=cfg['double_dqn'],
+        dueling=cfg['dueling'],
     )
-    print(f"Training complete. Last episode in log: {history[-1]['episode'] if history else 'None'}")
+
+
+def train_all_variants(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, reset=False, max_time=None):
+    """Train all three requested model variants one after another."""
+    results = {}
+    for variant_name in ('d3qn', 'double_dqn', 'dueling_dqn'):
+        results[variant_name] = train_variant(
+            variant_name,
+            n_episodes=n_episodes,
+            max_t=max_t,
+            eps_start=eps_start,
+            eps_end=eps_end,
+            eps_decay=eps_decay,
+            reset=reset,
+            max_time=max_time,
+        )
+    return results
+
+
+__all__ = ["train", "train_variant", "train_all_variants", "VARIANT_CONFIGS", "DQNAgent"]

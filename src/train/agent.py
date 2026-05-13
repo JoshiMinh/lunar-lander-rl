@@ -4,8 +4,10 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from src.model import QNetwork
-from src.memory import ReplayBuffer
+from src.models.d3qn import D3QNNetwork
+from src.models.double_dqn import DoubleDQNNetwork
+from src.models.dueling_dqn import DuelingDQNNetwork
+from src.train.memory import ReplayBuffer
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
 BATCH_SIZE = 128         # minibatch size
@@ -36,9 +38,16 @@ class DQNAgent:
         self.double_dqn = double_dqn
         self.dueling = dueling
 
+        if self.double_dqn and self.dueling:
+            self.network_cls = D3QNNetwork
+        elif self.dueling:
+            self.network_cls = DuelingDQNNetwork
+        else:
+            self.network_cls = DoubleDQNNetwork
+
         # Q-Network
-        self.qnetwork_local = QNetwork(state_size, action_size, seed, dueling=dueling).to(device)
-        self.qnetwork_target = QNetwork(state_size, action_size, seed, dueling=dueling).to(device)
+        self.qnetwork_local = self.network_cls(state_size, action_size, seed).to(device)
+        self.qnetwork_target = self.network_cls(state_size, action_size, seed).to(device)
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
 
         # Replay memory

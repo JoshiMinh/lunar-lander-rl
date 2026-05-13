@@ -15,7 +15,6 @@ ENV/
 build/
 dist/
 *.egg-info/
-Wheels/
 
 # Editor/IDE
 .vscode/
@@ -35,8 +34,8 @@ Wheels/
 .pytype/
 
 # Project-specific
-!models/checkpoint.pth
 !models/training_log.csv
+models/*_training_log.csv
 models/*.png
 models/*.jpg
 models/*.mp4

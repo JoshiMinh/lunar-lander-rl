@@ -19,6 +19,7 @@ on:
 jobs:
   train:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     permissions:
       contents: write
 
@@ -45,10 +46,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Check Checkpoint Status
+    - name: Check Model Status
       run: |
-        if [ -f "models/checkpoint.pth" ]; then
-          echo "📦 Checkpoint Status: FOUND"
+        if [ -f "models/d3qn_model.pth" ]; then
+          echo "📦 Model Status: FOUND"
           if [ -f "models/training_log.csv" ]; then
             LAST_EPISODE=$(tail -n 1 models/training_log.csv | cut -d',' -f1)
             echo "   Last Episode: $LAST_EPISODE (resuming training)"
@@ -56,17 +57,17 @@ jobs:
             echo "   Warning: No training log found"
           fi
         else
-          echo "🆕 Checkpoint Status: NOT FOUND (starting fresh)"
+          echo "🆕 Model Status: NOT FOUND (starting fresh)"
         fi
 
     - name: Run Training
       run: |
-        python train.py ${{ github.event.inputs.reset == 'true' && '--reset' || '' }}
+        python -c "from src.train.trainer import train_variant; train_variant('d3qn', n_episodes=3000, max_time=21600, reset=${{ github.event.inputs.reset == 'true' && 'True' || 'False' }})"
 
     - name: Commit & Push Progress
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "model: auto-update trained weights [skip ci]"
-        file_pattern: 'models/checkpoint.pth models/training_log.csv'
+        file_pattern: 'models/d3qn_model.pth models/training_log.csv models/*_model.pth models/*_scores.npy'
         skip_dirty_check: false    
         skip_fetch: true          
