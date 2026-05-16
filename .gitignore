@@ -1,42 +1,22 @@
-# Standard Python ignores
+# Bytecode and interpreter caches
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 
-# Virtual environments
-.env
-.venv
-env/
+# Local environments
+.venv/
 venv/
+env/
 ENV/
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-
-# Editor/IDE
-.vscode/
-.idea/
-
-# Jupyter
-.ipynb_checkpoints
-
-# Test / coverage
-.tox/
-.nox/
+# Test and tooling caches
 .pytest_cache/
-.coverage
-
-# Type checkers
 .mypy_cache/
 .pytype/
+.tox/
+.nox/
+.coverage
+htmlcov/
 
-# Project-specific
-!models/training_log.csv
-models/*_training_log.csv
-models/*.png
-models/*.jpg
-models/*.mp4
-models/*.npy
+# Jupyter notebooks
+.ipynb_checkpoints/
