@@ -278,6 +278,28 @@ def run_demo(config):
     print("=" * 70 + "\n")
 
 
+def build_quick_run_config():
+    """Return the default one-click demo configuration."""
+    best_model_path = os.path.join('models', 'd3qn_model_best.pth')
+    selected_model_path = best_model_path if os.path.exists(best_model_path) else os.path.join('models', 'd3qn_model.pth')
+    return {
+        'model_path': selected_model_path,
+        'double_dqn': True,
+        'dueling': True,
+        'episodes': 10,
+    }
+
+
+def run_quick_demo():
+    """Start the default D3QN demo without extra prompts."""
+    print("\n⚡ Quick Run selected: D3QN demo with default settings.\n")
+    config = build_quick_run_config()
+    if not os.path.exists(config['model_path']):
+        print(f"❌ Model file not found: {config['model_path']}")
+        return
+    run_demo(config)
+
+
 def run_train_interactive():
     """Prompt for training options and dispatch to the selected training routine."""
     try:
@@ -309,13 +331,12 @@ def run_train_interactive():
 
 if __name__ == "__main__":
     try:
-        # Top-level choice: Demo or Train
-        print("\nSelect action:\n  1) Demo (run trained model)\n  2) Train (start training)")
-        choice = input("Choose (1/2) [default: 1]: ").strip()
+        # Top-level choice: Quick Run, Demo, or Train
+        print("\nSelect action:\n  0) Quick Run (D3QN demo, one click)\n  1) Demo (run trained model)\n  2) Train (start training)")
+        choice = input("Choose (0/1/2) [default: 0]: ").strip()
         if choice == "2":
             run_train_interactive()
-        else:
-            # Run demo flow
+        elif choice == "1":
             config = build_interactive_menu()
             if config is None:
                 print("❌ No models available. Exiting.")
@@ -324,6 +345,10 @@ if __name__ == "__main__":
                 print(f"❌ Model file not found: {config['model_path']}")
                 sys.exit(1)
             run_demo(config)
+        elif choice == "0" or choice == "":
+            run_quick_demo()
+        else:
+            print("❌ Please enter 0, 1, or 2.")
 
     except KeyboardInterrupt:
         print("\n[!] Interrupted by user. Exiting gracefully...")

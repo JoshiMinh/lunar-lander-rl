@@ -1,6 +1,4 @@
 import os
-if "SDL_VIDEODRIVER" not in os.environ:
-    os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 import gymnasium as gym
 import torch
@@ -12,6 +10,12 @@ import time
 
 from src.game.environment import VastSpaceLander
 from src.train.agent import DQNAgent
+
+
+def _enable_headless_training_backend():
+    """Force SDL to use the dummy video driver for training only."""
+    if "SDL_VIDEODRIVER" not in os.environ:
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 VARIANT_CONFIGS = {
     'd3qn': {
@@ -35,8 +39,9 @@ VARIANT_CONFIGS = {
 }
 
 
-def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, save_path='models/d3qn_model.pth', log_path='models/training_log.csv', reset=False, max_time=None, double_dqn=True, dueling=True):
+def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.997, save_path='models/d3qn_model.pth', log_path='models/training_log.csv', reset=False, max_time=None, double_dqn=True, dueling=True):
     """Cloud-Optimized Deep Q-Learning with CSV logging, resume support, and headless mode."""
+    _enable_headless_training_backend()
     env = VastSpaceLander()
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.n
@@ -51,6 +56,8 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
     rewards_window = deque(maxlen=100)
     eps = eps_start
     history = []
+    best_avg_reward = float("-inf")
+    best_save_path = save_path.replace(".pth", "_best.pth")
 
     if reset:
         print("🔄 Reset flag detected. Starting training from scratch...")
@@ -121,8 +128,14 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
                 'duration': duration
             })
 
+            current_avg_reward = float(np.mean(rewards_window))
+            if len(rewards_window) >= 25 and current_avg_reward > best_avg_reward:
+                best_avg_reward = current_avg_reward
+                torch.save(agent.qnetwork_local.state_dict(), best_save_path)
+                print(f"\n⭐ New best rolling average: {best_avg_reward:.2f} -> saved {best_save_path}")
+
             pbar.set_postfix({
-                'AvgReward': f'{np.mean(rewards_window):.1f}',
+                'AvgReward': f'{current_avg_reward:.1f}',
                 'Eps': f'{eps:.2f}'
             })
             
@@ -156,7 +169,7 @@ def train(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.
     return history
 
 
-def train_variant(variant_name, n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, reset=False, max_time=None):
+def train_variant(variant_name, n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.997, reset=False, max_time=None):
     """Train one named model variant and save it into models/."""
     if variant_name not in VARIANT_CONFIGS:
         raise ValueError(f"Unknown variant: {variant_name}")
@@ -178,7 +191,7 @@ def train_variant(variant_name, n_episodes=3000, max_t=5000, eps_start=1.0, eps_
     )
 
 
-def train_all_variants(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.995, reset=False, max_time=None):
+def train_all_variants(n_episodes=3000, max_t=5000, eps_start=1.0, eps_end=0.05, eps_decay=0.997, reset=False, max_time=None):
     """Train all three requested model variants one after another."""
     results = {}
     for variant_name in ('d3qn', 'double_dqn', 'dueling_dqn'):

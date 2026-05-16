@@ -168,15 +168,19 @@ class VastSpaceLander(LunarLander):
 
         state = self._get_observation()
         
-        # 3. Custom Reward (Distance to Pad) - STRENGTHENED SIGNALS
+        # 3. Custom Reward (Distance to Pad)
         dist_x = abs(state[0])
         dist_y = abs(state[1])
         
-        # Much stronger shaping to guide descent
-        # Horizontal positioning + velocity control + angle stability
-        shaping = -100 * (dist_x ** 1.5) - 50 * (dist_y ** 1.5) \
-                  - 40 * (abs(state[2]) ** 1.5) - 50 * (abs(state[3]) ** 1.5) \
-                  - 80 * (abs(state[4]) ** 1.5)
+        # Use smoother potential shaping so progress toward the pad is easier to learn.
+        shaping = (
+            -6.0 * dist_x
+            -8.0 * dist_y
+            -2.0 * abs(state[2])
+            -3.0 * abs(state[3])
+            -3.0 * abs(state[4])
+            -1.5 * abs(state[5])
+        )
         
         if self.custom_prev_shaping is not None:
             reward = shaping - self.custom_prev_shaping
@@ -184,30 +188,29 @@ class VastSpaceLander(LunarLander):
             reward = 0
         self.custom_prev_shaping = shaping
 
-        # Higher living cost to prevent indefinite hovering (strengthened from 0.008)
-        reward -= 0.05
+        # Mild living cost to keep the agent moving.
+        reward -= 0.01
         
-        # Penalty for using thrusters (encourages efficient control)
+        # Small penalty for using thrusters (encourages efficient control)
         if action != 0:
-            reward -= 0.05
+            reward -= 0.01
 
-        # BONUS: Reward controlled descent when near pad (below 0.5 height, moving down)
+        # Reward controlled descent when near the pad.
         approaching_pad = (dist_y < 0.8 and state[3] < -0.05)  # descending from higher up
         if approaching_pad:
-            # Reward proportional to descent speed to encourage landing faster
-            reward += 0.2 * abs(state[3]) 
+            reward += 0.05 * abs(state[3]) 
         
-        # Horizontal correction reward
+        # Reward movement back toward the pad center.
         if dist_y < 0.5 and dist_x > 0.1:
             if (state[0] > 0 and state[2] < 0) or (state[0] < 0 and state[2] > 0):
-                reward += 0.05 # Moving towards center
+                reward += 0.03
 
-        # STRONG hover penalty: Not moving much vertically but not landed
+        # Light hover penalty: hovering is bad, but avoid overwhelming the shaping signal.
         no_leg_contact = (state[6] == 0.0 and state[7] == 0.0)
         near_pad = (dist_x < 0.20 and dist_y < 0.40)
         low_vertical_speed = (abs(state[3]) < 0.08)  # Almost stationary
         if self.mission_status != 'success' and no_leg_contact and near_pad and low_vertical_speed:
-            reward -= 1.0  # Much stronger penalty for hovering
+            reward -= 0.25
 
         # 4. Success/Failure Detection
         terminated = False
@@ -228,9 +231,9 @@ class VastSpaceLander(LunarLander):
             self.mission_status = 'success'
             
             # DYNAMIC SUCCESS REWARDS
-            base_reward = 200
-            fuel_reward = self.fuel * 0.8 # Strong incentive to save fuel
-            speed_reward = (self.max_episode_steps - self.step_count) * 0.05 # Incentive to land fast
+            base_reward = 300
+            fuel_reward = self.fuel * 0.4
+            speed_reward = (self.max_episode_steps - self.step_count) * 0.02
             
             reward += (base_reward + fuel_reward + speed_reward)
             self.success_timer_steps = self.success_wait_steps
@@ -238,12 +241,14 @@ class VastSpaceLander(LunarLander):
         elif self.game_over:
             terminated = True
             self.mission_status = 'failed'
-            reward -= 120
+            reward -= 80
 
         truncated = (self.step_count >= self.max_episode_steps) and (not terminated)
         # Preserve success even if truncation happens during the showcase window
         if truncated and (self.mission_status is None or self.mission_status == 'timeout'):
             self.mission_status = 'timeout'
+            if reward > -20:
+                reward -= 20
         info['mission_status'] = self.mission_status
         info['fuel'] = self.fuel
         
