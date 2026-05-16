@@ -71,4 +71,3 @@ jobs:
         file_pattern: 'models/d3qn_model.pth models/training_log.csv models/*_model.pth models/*_scores.npy'
         skip_dirty_check: false    
         skip_fetch: true          
-        add_options: '--ignore-missing'
